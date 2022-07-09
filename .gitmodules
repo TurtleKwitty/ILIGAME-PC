@@ -1,0 +1,3 @@
+[submodule "ILIGAME"]
+	path = src/ILIGAME
+	url = https://github.com/TurtleKwitty/ILIGAME.git
