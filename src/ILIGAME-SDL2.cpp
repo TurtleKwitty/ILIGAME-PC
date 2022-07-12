@@ -138,4 +138,6 @@ void ILIGAME_SDL2::flip()
         std::cout << "gameSurface blit error(Error: " << SDL_GetError() << ")" << std::endl;
     }
     SDL_UpdateWindowSurface(window);
+
+    ILIGAME::VM::flip();
 }
