@@ -18,7 +18,7 @@ ILIGAME_SDL2::ILIGAME_SDL2() : ILIGAME::VM()
         if (!gameSurface)
         {
             std::cout << "gameSurface not initalized(Error: " << SDL_GetError() << ")" << std::endl;
-            throw("Could not initialize gameSurface");
+            //throw("Could not initialize gameSurface");
         }
     }
 }
@@ -42,10 +42,43 @@ int ILIGAME_SDL2::run()
     {
         while (SDL_PollEvent(&event) != 0)
         {
-            if (event.type == SDL_QUIT)
-            {
-                quit = true;
-            }
+        	switch(event.type){
+        		case SDL_QUIT:
+        			quit = true;
+        			break;
+        		case SDL_MOUSEMOTION:
+        			mousePos.x = event.motion.x/4;
+        			mousePos.y = event.motion.y/4;
+        			break;
+        		case SDL_MOUSEBUTTONDOWN:
+        		case SDL_MOUSEBUTTONUP:
+        			char mouseActionMask;
+        			std::cout<<"MouseButton"<<std::endl;	
+        			switch(event.button.button){
+        				case SDL_BUTTON_LEFT:
+        					mouseActionMask = ILIGAME::MouseActions::LEFT_CLICK;
+        			std::cout<<"MouseButtonLeft"<<std::endl;
+        					break;
+        				case SDL_BUTTON_RIGHT:
+        					mouseActionMask = ILIGAME::MouseActions::RIGHT_CLICK;
+        			std::cout<<"MouseButtonRight"<<std::endl;
+        					break;
+        				case SDL_BUTTON_MIDDLE:
+        					mouseActionMask = ILIGAME::MouseActions::MIDDLE_CLICK;
+        			std::cout<<"MouseButtonMiddle"<<std::endl;
+        					break;
+        			}
+
+        			if(event.button.state == SDL_PRESSED){
+        			std::cout<<"MouseButtonPressed"<<std::endl;
+        			printf("mouseActionsMask: %u\n", mouseActionMask);
+        				mouseActions |= mouseActionMask;
+        			printf("mouseActions: %u\n", mouseActions);	
+        			} else {
+        				mouseActions &= ~mouseActionMask;
+        			}
+       			
+        	}
         }
 
         while (tickUpdate())
@@ -77,19 +110,17 @@ void ILIGAME_SDL2::flip()
     int currentTime = SDL_GetTicks();
     frameEndTimeError += frameLengthDrift;
     int drawDelay = (lastFrameTime + frameLengthMillisecond + floor(frameEndTimeError)) - currentTime;
-    printf("Frame time: %u\n", currentTime - lastFrameTime);
+    if (frameEndTimeError >= 1)
+    {
+        frameEndTimeError -= floor(frameEndTimeError);
+    }
+    //printf("Frame time: %u\n\r", currentTime - lastFrameTime);
     if (drawDelay > 0)
     {
         // Only delay if we're ahead
         SDL_Delay(drawDelay);
     }
-    lastFrameTime += frameLengthMillisecond;
-    if (frameEndTimeError >= 1)
-    {
-        lastFrameTime += floor(frameEndTimeError);
-        frameEndTimeError -= floor(frameEndTimeError);
-    }
-
+    lastFrameTime = currentTime;
     // Draw
     Uint32 *pixels = (Uint32 *)gameSurface->pixels;
     for (int y = 0; y < GAME_HEIGHT; y++)
