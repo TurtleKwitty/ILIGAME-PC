@@ -15,6 +15,9 @@ public:
     int run() override;
     void flip() override;
 
+	unsigned int readFile(const char* filePath, char*& fileData) override;
+	bool writeFile(const char* filePath, void* fileData, unsigned int fileSize) override;
+
     Uint32 lastFrameTime = SDL_GetTicks();
     float frameEndTimeError = 0;
     const Uint8 frameLengthMillisecond = 1 * 1000 / FRAME_RATE;

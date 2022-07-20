@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <boost/filesystem.hpp>
 
 #include <iostream>
 
@@ -12,7 +13,7 @@ ILIGAME_SDL2::ILIGAME_SDL2() : ILIGAME::VM()
     }
     else
     {
-        window = SDL_CreateWindow("ILIGAME", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, GAME_WIDTH * 4, GAME_HEIGHT * 4, SDL_WINDOW_SHOWN);
+        window = SDL_CreateWindow("ILIGAME", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, GAME_WIDTH, GAME_HEIGHT, SDL_WINDOW_SHOWN);
         windowSurface = SDL_GetWindowSurface(window);
         gameSurface = SDL_CreateRGBSurfaceWithFormat(0, GAME_WIDTH, GAME_HEIGHT, 24, SDL_PIXELFORMAT_RGB888);
         if (!gameSurface)
@@ -38,6 +39,9 @@ int ILIGAME_SDL2::run()
     bool quit = false;
     SDL_Event event;
 
+	while(tickInit())
+		;
+
     while (!quit)
     {
         while (SDL_PollEvent(&event) != 0)
@@ -47,33 +51,26 @@ int ILIGAME_SDL2::run()
         			quit = true;
         			break;
         		case SDL_MOUSEMOTION:
-        			mousePos.x = event.motion.x/4;
-        			mousePos.y = event.motion.y/4;
+        			mousePos.x = event.motion.x;
+        			mousePos.y = event.motion.y;
         			break;
         		case SDL_MOUSEBUTTONDOWN:
         		case SDL_MOUSEBUTTONUP:
-        			char mouseActionMask;
-        			std::cout<<"MouseButton"<<std::endl;	
+        			char mouseActionMask = 0;
         			switch(event.button.button){
         				case SDL_BUTTON_LEFT:
         					mouseActionMask = ILIGAME::MouseActions::LEFT_CLICK;
-        			std::cout<<"MouseButtonLeft"<<std::endl;
         					break;
         				case SDL_BUTTON_RIGHT:
         					mouseActionMask = ILIGAME::MouseActions::RIGHT_CLICK;
-        			std::cout<<"MouseButtonRight"<<std::endl;
         					break;
         				case SDL_BUTTON_MIDDLE:
         					mouseActionMask = ILIGAME::MouseActions::MIDDLE_CLICK;
-        			std::cout<<"MouseButtonMiddle"<<std::endl;
         					break;
         			}
 
         			if(event.button.state == SDL_PRESSED){
-        			std::cout<<"MouseButtonPressed"<<std::endl;
-        			printf("mouseActionsMask: %u\n", mouseActionMask);
         				mouseActions |= mouseActionMask;
-        			printf("mouseActions: %u\n", mouseActions);	
         			} else {
         				mouseActions &= ~mouseActionMask;
         			}
@@ -90,17 +87,9 @@ int ILIGAME_SDL2::run()
         flip();
     }
 
-    ILIGAME::VM::clearScreen(14);
+    while(tickClose())
+    	;
 
-    for (int i = 0; i < 8; i++)
-    {
-        ILIGAME::VM::drawPixel(i, i, 15);
-    }
-
-    for (int i = 0; i < 8; i++)
-    {
-        ILIGAME::VM::drawPixel(GAME_WIDTH - i - 1, GAME_HEIGHT - i - 1, 15);
-    }
     return 0;
 }
 
@@ -114,13 +103,14 @@ void ILIGAME_SDL2::flip()
     {
         frameEndTimeError -= floor(frameEndTimeError);
     }
-    //printf("Frame time: %u\n\r", currentTime - lastFrameTime);
+    //printf("Frame time: %u\t\tDelayed: %u\n\r", currentTime - lastFrameTime, drawDelay>0 ? drawDelay : 0);
+    lastFrameTime = currentTime;
     if (drawDelay > 0)
     {
         // Only delay if we're ahead
         SDL_Delay(drawDelay);
+        lastFrameTime += drawDelay;
     }
-    lastFrameTime = currentTime;
     // Draw
     Uint32 *pixels = (Uint32 *)gameSurface->pixels;
     for (int y = 0; y < GAME_HEIGHT; y++)
@@ -140,4 +130,39 @@ void ILIGAME_SDL2::flip()
     SDL_UpdateWindowSurface(window);
 
     ILIGAME::VM::flip();
+}
+
+unsigned int ILIGAME_SDL2::readFile(const char* filePath, char*& fileData){
+	SDL_RWops* file = SDL_RWFromFile(filePath, "rb");
+	if(file == NULL) {
+		std::cout << "Could not open file(Error: " << SDL_GetError() <<" )"<<std::endl;
+		return 0;
+	} else {
+		std::cout <<"File opened" << std::endl;
+	}
+	
+	Sint32 fileSize = file->size(file);
+	std::cout << "Reading file with size " << fileSize << std::endl;
+	if(fileSize == -1) return 0;
+	
+	fileData = new char[fileSize];
+	file->read(file, fileData, fileSize, 1);
+	file->close(file);
+
+	return fileSize;
+}
+
+bool ILIGAME_SDL2::writeFile(const char* filePath, void* fileData, unsigned int fileSize){
+	boost::filesystem::path path(filePath);
+	boost::filesystem::create_directories(path.parent_path());
+	SDL_RWops* file = SDL_RWFromFile(filePath, "wb");
+		if(file == NULL) {
+		std::cout << "Could not open file(Error: " << SDL_GetError() <<" )"<<std::endl;
+		return false;
+	}
+
+	file->write(file, fileData, fileSize, 1);
+	file->close(file);
+
+	return true;
 }
